@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Consolidado + Cruce + Orden por Ubicación</title>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+  <style>
+    :root{
+      --bg:#f3f8f5;
+      --card:#ffffff;
+      --card-soft:#f8fcf9;
+      --primary:#1f7a4d;
+      --primary-dark:#16603c;
+      --primary-soft:#eaf6ef;
+      --blue:#2563eb;
+      --blue-dark:#1d4ed8;
+      --gray:#e5e7eb;
+      --gray-dark:#6b7280;
+      --border:#d7e6dc;
+      --text:#1f2937;
+      --muted:#6b7280;
+      --danger:#b91c1c;
+      --warning:#92400e;
+      --shadow:0 10px 30px rgba(0,0,0,.08);
+      --radius:16px;
+    }
+
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      font-family:Arial, Helvetica, sans-serif;
+      background:linear-gradient(135deg,#eef7f1,#f8fbf9);
+      color:var(--text);
+      padding:20px;
+    }
+    .container{ max-width:1400px; margin:0 auto; }
+    .card{
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      padding:22px;
+      margin-bottom:18px;
+    }
+    h1{ margin:0 0 8px; color:var(--primary); font-size:28px; }
+    h2{ margin:0 0 12px; color:var(--primary); font-size:20px; }
+    h3{ margin:0 0 8px; color:var(--primary-dark); font-size:16px; }
+    p{ margin:0 0 14px; color:var(--muted); line-height:1.45; }
+    textarea{
+      width:100%; min-height:260px; resize:vertical; border:1px solid var(--border);
+      border-radius:12px; padding:14px; font-size:14px; outline:none; background:#fcfffd;
+    }
+    textarea:focus, select:focus, input:focus{
+      border-color:var(--primary); box-shadow:0 0 0 3px rgba(31,122,77,.12); outline:none;
+    }
+    select, input{
+      height:42px; border:1px solid var(--border); border-radius:10px; padding:0 12px;
+      font-size:14px; background:#fff; width:100%;
+    }
+    .grid{ display:grid; grid-template-columns:repeat(3, minmax(220px, 1fr)); gap:14px; }
+    .grid-2{ display:grid; grid-template-columns:repeat(2, minmax(250px, 1fr)); gap:14px; }
+    .field{ display:flex; flex-direction:column; gap:6px; }
+    label{ font-size:13px; font-weight:bold; color:var(--primary-dark); }
+    .actions{ display:flex; gap:10px; flex-wrap:wrap; margin-top:16px; }
+    button{
+      border:none; border-radius:10px; padding:12px 18px; font-size:14px; font-weight:bold;
+      cursor:pointer; transition:.2s ease;
+    }
+    button:hover{ transform:translateY(-1px); }
+    .btn-primary{ background:var(--primary); color:#fff; }
+    .btn-primary:hover{ background:var(--primary-dark); }
+    .btn-secondary{ background:var(--gray); color:#111827; }
+    .btn-secondary:hover{ background:#d9dde3; }
+    .btn-success{ background:#0f9d58; color:#fff; }
+    .btn-success:hover{ background:#0c8248; }
+    .btn-blue{ background:var(--blue); color:#fff; }
+    .btn-blue:hover{ background:var(--blue-dark); }
+    .btn-print{ background:#111827; color:#fff; }
+    .btn-print:hover{ background:#000; }
+    .summary{ display:flex; gap:12px; flex-wrap:wrap; margin-top:16px; }
+    .summary-box{
+      background:var(--card-soft); border:1px solid var(--border); padding:10px 14px;
+      border-radius:12px; color:var(--primary-dark); font-weight:bold;
+    }
+    .toolbar{
+      display:flex; justify-content:space-between; align-items:center; gap:12px;
+      flex-wrap:wrap; margin-top:14px;
+    }
+    .toolbar input{ max-width:420px; }
+    .preview-wrap,.table-wrap{
+      overflow:auto; border:1px solid var(--border); border-radius:14px; margin-top:14px;
+      background:#fff;
+    }
+    table{ width:100%; border-collapse:collapse; min-width:960px; background:#fff; }
+    thead{ background:var(--primary); color:#fff; }
+    th, td{
+      padding:12px 14px; border-bottom:1px solid #e5e7eb; text-align:left; vertical-align:top;
+      font-size:14px;
+    }
+    tbody tr:hover{ background:#f9fcfa; }
+    .codigo{ font-weight:bold; color:var(--primary); white-space:nowrap; }
+    .hidden{ display:none; }
+    .muted{ color:var(--muted); font-style:italic; }
+    .info{
+      background:#eff8f2; border:1px solid #cfe4d8; color:var(--primary-dark); padding:12px 14px;
+      border-radius:12px; margin-top:12px; font-size:14px;
+    }
+    .warning{
+      background:#fff7ed; border:1px solid #fed7aa; color:var(--warning); padding:12px 14px;
+      border-radius:12px; margin-top:12px; font-size:14px;
+    }
+    .tabs{ display:flex; gap:10px; flex-wrap:wrap; margin-bottom:18px; }
+    .tab-btn{
+      background:#eaf3ee; color:var(--primary-dark); border:1px solid var(--border);
+      padding:10px 16px; border-radius:999px;
+    }
+    .tab-btn.active{ background:var(--primary); color:#fff; border-color:var(--primary); }
+    .tab-panel{ display:none; }
+    .tab-panel.active{ display:block; }
+    .pill-0{ color:var(--danger); font-weight:bold; }
+    .comment-cell{
+      min-width:180px; background:#fffef7; outline:none;
+    }
+    .group-card{
+      border:1px solid var(--border); border-radius:14px; padding:14px; margin-bottom:14px; background:#fff;
+      break-inside:avoid; page-break-inside:avoid;
+    }
+    .group-title{
+      font-size:18px; color:var(--primary-dark); font-weight:bold; margin-bottom:10px;
+      border-bottom:2px solid #e5efe8; padding-bottom:8px;
+    }
+    .group-table{ min-width:unset; }
+    .group-table th, .group-table td{ font-size:15px; }
+    .print-zone{ margin-top:14px; }
+    .compact-wrap{
+      overflow:auto; border:1px solid var(--border); border-radius:14px; background:#fff;
+    }
+    .compact-table{ min-width:760px; }
+    .compact-table td, .compact-table th{ font-size:14px; }
+    .compact-table .ubicacion-cell{
+      font-weight:bold; color:var(--primary-dark); background:#f6fbf8; white-space:nowrap;
+    }
+    .compact-table .qty-cell{ white-space:nowrap; }
+
+    @media (max-width:950px){
+      .grid, .grid-2{ grid-template-columns:1fr; }
+      h1{ font-size:22px; }
+      h2{ font-size:18px; }
+      th, td{ font-size:13px; padding:10px; }
+    }
+
+    @media print{
+      body{ background:#fff; padding:0; }
+      .no-print{ display:none !important; }
+      .container{ max-width:none; }
+      .card{ box-shadow:none; border:none; padding:0; margin:0; }
+      #panelOrdenado{ display:block !important; }
+      #printAreaOrdenado{ display:block !important; }
+      .group-card{ border:1px solid #ccc; margin-bottom:12px; }
+      .group-title{ font-size:20px; }
+      .group-table th, .group-table td{ font-size:16px; padding:8px 10px; }
+      .compact-wrap{ overflow:visible; border:none; }
+      .compact-table{ min-width:unset; width:100%; }
+      .compact-table th, .compact-table td{ font-size:12px; padding:6px 8px; }
+      .compact-table .ubicacion-cell{ font-size:12px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card no-print">
+      <h1>Consolidado + Cruce + Orden por Ubicación</h1>
+      <p>Flujo completo: primero consolidas tu base maestra, luego cruzas tu listado a buscar y finalmente ordenas el resultado por ubicación para imprimirlo bonito y útil.</p>
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="panelBase">1. Base maestra</button>
+        <button class="tab-btn" data-tab="panelCruce">2. Cruce de listado</button>
+        <button class="tab-btn" data-tab="panelOrdenado">3. Orden por ubicación</button>
+      </div>
+    </div>
+
+    <section id="panelBase" class="tab-panel active">
+      <div class="card">
+        <h2>1) Base maestra</h2>
+        <p>Pega tu data desde Excel. La primera fila será tomada como encabezado y tú eliges manualmente qué columna corresponde a Código, Ubicación y Cantidad.</p>
+        <textarea id="inputDataBase" placeholder="Ejemplo:
+Bodega	Variante	Zona	Ubicación	Caja	Physical Quantity
+14	38556	Bulk	01-30-069-01		19
+14	38556	Bulk	01-30-004-02		45
+14	47212	Bulk	01-30-018-06		30"></textarea>
+        <div class="actions">
+          <button class="btn-primary" onclick="cargarColumnasBase()">Cargar columnas</button>
+          <button class="btn-secondary" onclick="limpiarBase()">Limpiar base</button>
+        </div>
+        <div class="info">La pestaña 1 consolida por código y mantiene el orden de ubicaciones/cantidades tal como venga en la data. No hace magia negra ni sumas automáticas.</div>
+      </div>
+
+      <div class="card hidden" id="configBaseCard">
+        <h2>Configuración de columnas</h2>
+        <div class="grid">
+          <div class="field">
+            <label for="colCodigoBase">Columna de Código</label>
+            <select id="colCodigoBase"></select>
+          </div>
+          <div class="field">
+            <label for="colUbicacionBase">Columna de Ubicación</label>
+            <select id="colUbicacionBase"></select>
+          </div>
+          <div class="field">
+            <label for="colCantidadBase">Columna de Cantidad</label>
+            <select id="colCantidadBase"></select>
+          </div>
+        </div>
+        <div class="actions">
+          <button class="btn-primary" onclick="procesarBase()">Procesar base</button>
+        </div>
+        <div id="previewBaseArea"></div>
+      </div>
+
+      <div class="card hidden" id="resultBaseCard">
+        <h2>Resultado consolidado</h2>
+        <div class="toolbar">
+          <input type="text" id="searchBaseInput" placeholder="Buscar por código o ubicación..." oninput="filtrarBase()">
+          <div class="actions" style="margin-top:0;">
+            <button class="btn-success" onclick="copiarBase()">Copiar</button>
+            <button class="btn-blue" onclick="exportarBaseExcel()">Exportar a Excel</button>
+          </div>
+        </div>
+        <div class="summary" id="summaryBase"></div>
+        <div id="resultadoBaseArea" class="table-wrap"></div>
+      </div>
+    </section>
+
+    <section id="panelCruce" class="tab-panel">
+      <div class="card">
+        <h2>2) Cruce de listado</h2>
+        <p>Aquí pegas tu listado a buscar. El sistema cruza contra la base procesada de la pestaña 1 y te devuelve Ubicación, Qty y Comentarios.</p>
+        <textarea id="inputDataCruce" placeholder="Ejemplo:
+Codigo
+41032
+42770
+44956
+18437"></textarea>
+        <div class="actions">
+          <button class="btn-primary" onclick="cargarColumnasCruce()">Cargar columnas</button>
+          <button class="btn-secondary" onclick="limpiarCruce()">Limpiar cruce</button>
+        </div>
+        <div class="warning">Si un código no existe en la base maestra o viene vacío, el sistema colocará 0 en Ubicación y 0 en Qty. Más claro, imposible.</div>
+      </div>
+
+      <div class="card hidden" id="configCruceCard">
+        <h2>Configuración del listado a buscar</h2>
+        <div class="grid-2">
+          <div class="field">
+            <label for="colCodigoCruce">Columna del código a buscar</label>
+            <select id="colCodigoCruce"></select>
+          </div>
+          <div class="field">
+            <label for="comentarioDefault">Comentario inicial opcional</label>
+            <input id="comentarioDefault" type="text" placeholder="Ejemplo: pendiente / ya lo tengo / revisar">
+          </div>
+        </div>
+        <div class="actions">
+          <button class="btn-primary" onclick="procesarCruce()">Cruzar listado</button>
+        </div>
+        <div id="previewCruceArea"></div>
+      </div>
+
+      <div class="card hidden" id="resultCruceCard">
+        <h2>Resultado del cruce</h2>
+        <div class="toolbar">
+          <input type="text" id="searchCruceInput" placeholder="Buscar por código, ubicación o comentario..." oninput="filtrarCruce()">
+          <div class="actions" style="margin-top:0;">
+            <button class="btn-success" onclick="copiarCruce()">Copiar</button>
+            <button class="btn-blue" onclick="exportarCruceExcel()">Exportar a Excel</button>
+            <button class="btn-primary" onclick="generarOrdenadoDesdeCruce()">Generar orden por ubicación</button>
+          </div>
+        </div>
+        <div class="summary" id="summaryCruce"></div>
+        <div id="resultadoCruceArea" class="table-wrap"></div>
+      </div>
+    </section>
+
+    <section id="panelOrdenado" class="tab-panel">
+      <div class="card no-print">
+        <h2>3) Orden por ubicación</h2>
+        <p>Esta pestaña toma los resultados del cruce, separa cada ubicación con su cantidad correspondiente y agrupa por ubicación en formato compacto tipo lista para que al imprimir no te reviente media resma.</p>
+        <div class="actions">
+          <button class="btn-primary" onclick="generarOrdenadoDesdeCruce()">Actualizar desde pestaña 2</button>
+          <button class="btn-success" onclick="copiarOrdenado()">Copiar</button>
+          <button class="btn-blue" onclick="exportarOrdenadoExcel()">Exportar a Excel</button>
+          <button class="btn-print" onclick="imprimirOrdenado()">Imprimir</button>
+        </div>
+        <div class="summary" id="summaryOrdenado"></div>
+      </div>
+      <div class="card print-zone" id="printAreaOrdenado">
+        <div id="resultadoOrdenadoArea"></div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    let baseHeaders = [];
+    let baseRawRows = [];
+    let baseResultadoGlobal = [];
+    let baseResultadoFiltrado = [];
+    let baseMap = new Map();
+
+    let cruceHeaders = [];
+    let cruceRawRows = [];
+    let cruceResultadoGlobal = [];
+    let cruceResultadoFiltrado = [];
+
+    let ordenadoGlobal = [];
+
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => activarTab(btn.dataset.tab));
+    });
+
+    function activarTab(tabId){
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tabId));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === tabId));
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function escapeHTML(texto){
+      return String(texto ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function limpiarCelda(texto){
+      return String(texto ?? '').replace(/^\uFEFF/, '').trim();
+    }
+
+    function textoVisible(valor, fallback = '0'){
+      const limpio = limpiarCelda(valor);
+      return limpio === '' ? fallback : limpio;
+    }
+
+    function llenarSelect(id, opciones) {
+      const select = document.getElementById(id);
+      select.innerHTML = `<option value="">Seleccionar...</option>`;
+      opciones.forEach((op, index) => {
+        const option = document.createElement('option');
+        option.value = index;
+        option.textContent = `${index + 1}. ${op}`;
+        select.appendChild(option);
+      });
+    }
+
+    function parseTSV(texto){
+      const lineas = texto.split(/\r?\n/).filter(l => l.trim() !== '');
+      if (lineas.length < 2) return null;
+      const headers = lineas[0].split('\t').map(h => limpiarCelda(h));
+      const rows = lineas.slice(1).map(linea => linea.split('\t').map(celda => limpiarCelda(celda)));
+      return { headers, rows };
+    }
+
+    function buildPreviewHTML(headers, rows){
+      const previewRows = rows.slice(0, 5);
+      let html = `
+        <h2 style="margin-top:18px;">Vista previa</h2>
+        <p>Primeras filas detectadas para validar que el pegado quedó correcto.</p>
+        <div class="preview-wrap">
+          <table>
+            <thead><tr>${headers.map(h => `<th>${escapeHTML(h)}</th>`).join('')}</tr></thead>
+            <tbody>`;
+      previewRows.forEach(row => {
+        html += `<tr>${headers.map((_, i) => `<td>${escapeHTML(row[i] || '')}</td>`).join('')}</tr>`;
+      });
+      html += `</tbody></table></div>`;
+      return html;
+    }
+
+    function normalizarValorCodigo(valor){
+      return limpiarCelda(valor);
+    }
+
+    function cargarColumnasBase(){
+      const texto = document.getElementById('inputDataBase').value.trim();
+      if (!texto){ alert('Pega la data base primero.'); return; }
+      const parsed = parseTSV(texto);
+      if (!parsed){ alert('La base debe tener al menos una fila de encabezado y una fila de datos.'); return; }
+      baseHeaders = parsed.headers;
+      baseRawRows = parsed.rows;
+      llenarSelect('colCodigoBase', baseHeaders);
+      llenarSelect('colUbicacionBase', baseHeaders);
+      llenarSelect('colCantidadBase', baseHeaders);
+      document.getElementById('configBaseCard').classList.remove('hidden');
+      document.getElementById('resultBaseCard').classList.add('hidden');
+      document.getElementById('previewBaseArea').innerHTML = buildPreviewHTML(baseHeaders, baseRawRows);
+    }
+
+    function procesarBase(){
+      const idxCodigo = document.getElementById('colCodigoBase').value;
+      const idxUbicacion = document.getElementById('colUbicacionBase').value;
+      const idxCantidad = document.getElementById('colCantidadBase').value;
+      if (idxCodigo === '' || idxUbicacion === '' || idxCantidad === '') { alert('Selecciona las 3 columnas.'); return; }
+      if (idxCodigo === idxUbicacion || idxCodigo === idxCantidad || idxUbicacion === idxCantidad) { alert('Cada selector debe apuntar a una columna diferente.'); return; }
+
+      const agrupado = {};
+      baseRawRows.forEach(row => {
+        const codigo = normalizarValorCodigo(row[idxCodigo] || '');
+        const ubicacion = limpiarCelda(row[idxUbicacion] || '');
+        const cantidad = limpiarCelda(row[idxCantidad] || '');
+        if (!codigo) return;
+        if (!agrupado[codigo]) agrupado[codigo] = { ubicaciones: [], cantidades: [] };
+        agrupado[codigo].ubicaciones.push(textoVisible(ubicacion, '0'));
+        agrupado[codigo].cantidades.push(textoVisible(cantidad, '0'));
+      });
+
+      baseResultadoGlobal = Object.keys(agrupado)
+        .sort((a,b) => a.localeCompare(b, undefined, { numeric:true, sensitivity:'base' }))
+        .map(codigo => ({
+          codigo,
+          ubicaciones: agrupado[codigo].ubicaciones.join(' / '),
+          cantidades: agrupado[codigo].cantidades.join(' / ')
+        }));
+
+      baseMap = new Map(baseResultadoGlobal.map(item => [item.codigo, item]));
+      baseResultadoFiltrado = [...baseResultadoGlobal];
+      renderBase(baseResultadoFiltrado);
+      renderSummaryBase();
+      document.getElementById('searchBaseInput').value = '';
+      document.getElementById('resultBaseCard').classList.remove('hidden');
+    }
+
+    function renderSummaryBase(){
+      document.getElementById('summaryBase').innerHTML = `
+        <div class="summary-box">Filas leídas: ${baseRawRows.length}</div>
+        <div class="summary-box">Códigos únicos: ${baseResultadoGlobal.length}</div>
+        <div class="summary-box">Resultado visible: ${baseResultadoFiltrado.length}</div>`;
+    }
+
+    function renderBase(data){
+      const area = document.getElementById('resultadoBaseArea');
+      if (!data.length){
+        area.innerHTML = `<table><thead><tr><th>Código</th><th>Ubicaciones</th><th>Cantidades</th></tr></thead><tbody><tr><td colspan="3" class="muted">No se encontraron registros.</td></tr></tbody></table>`;
+        return;
+      }
+      let html = `<table><thead><tr><th>Código</th><th>Ubicaciones</th><th>Cantidades</th></tr></thead><tbody>`;
+      data.forEach(item => {
+        html += `<tr><td class="codigo">${escapeHTML(item.codigo)}</td><td>${escapeHTML(item.ubicaciones)}</td><td>${escapeHTML(item.cantidades)}</td></tr>`;
+      });
+      html += `</tbody></table>`;
+      area.innerHTML = html;
+    }
+
+    function filtrarBase(){
+      const texto = document.getElementById('searchBaseInput').value.trim().toLowerCase();
+      baseResultadoFiltrado = !texto
+        ? [...baseResultadoGlobal]
+        : baseResultadoGlobal.filter(item => item.codigo.toLowerCase().includes(texto) || item.ubicaciones.toLowerCase().includes(texto));
+      renderBase(baseResultadoFiltrado);
+      renderSummaryBase();
+    }
+
+    function copiarBase(){
+      if (!baseResultadoGlobal.length){ alert('Primero procesa la base.'); return; }
+      const data = baseResultadoFiltrado.length ? baseResultadoFiltrado : baseResultadoGlobal;
+      const texto = ['Código\tUbicaciones\tCantidades', ...data.map(i => `${i.codigo}\t${i.ubicaciones}\t${i.cantidades}`)].join('\n');
+      navigator.clipboard.writeText(texto).then(() => alert('Resultado consolidado copiado.')).catch(() => alert('No se pudo copiar.'));
+    }
+
+    function exportarBaseExcel(){
+      if (!baseResultadoGlobal.length){ alert('Primero procesa la base.'); return; }
+      const data = baseResultadoFiltrado.length ? baseResultadoFiltrado : baseResultadoGlobal;
+      exportarJSONaExcel(data.map(i => ({ Código:i.codigo, Ubicaciones:i.ubicaciones, Cantidades:i.cantidades })), 'consolidado_base');
+    }
+
+    function limpiarBase(){
+      document.getElementById('inputDataBase').value = '';
+      document.getElementById('colCodigoBase').innerHTML = '';
+      document.getElementById('colUbicacionBase').innerHTML = '';
+      document.getElementById('colCantidadBase').innerHTML = '';
+      document.getElementById('previewBaseArea').innerHTML = '';
+      document.getElementById('resultadoBaseArea').innerHTML = '';
+      document.getElementById('summaryBase').innerHTML = '';
+      document.getElementById('searchBaseInput').value = '';
+      document.getElementById('configBaseCard').classList.add('hidden');
+      document.getElementById('resultBaseCard').classList.add('hidden');
+      baseHeaders = []; baseRawRows = []; baseResultadoGlobal = []; baseResultadoFiltrado = []; baseMap = new Map();
+      limpiarCruce();
+      limpiarOrdenado();
+    }
+
+    function cargarColumnasCruce(){
+      const texto = document.getElementById('inputDataCruce').value.trim();
+      if (!texto){ alert('Pega el listado a buscar primero.'); return; }
+      const parsed = parseTSV(texto);
+      if (!parsed){ alert('El listado debe tener al menos una fila de encabezado y una fila de datos.'); return; }
+      cruceHeaders = parsed.headers;
+      cruceRawRows = parsed.rows;
+      llenarSelect('colCodigoCruce', cruceHeaders);
+      document.getElementById('configCruceCard').classList.remove('hidden');
+      document.getElementById('resultCruceCard').classList.add('hidden');
+      document.getElementById('previewCruceArea').innerHTML = buildPreviewHTML(cruceHeaders, cruceRawRows);
+    }
+
+    function procesarCruce(){
+      if (!baseResultadoGlobal.length){
+        alert('Primero debes procesar la base maestra en la pestaña 1.');
+        activarTab('panelBase');
+        return;
+      }
+      const idxCodigo = document.getElementById('colCodigoCruce').value;
+      if (idxCodigo === ''){ alert('Selecciona la columna del código a buscar.'); return; }
+      const comentarioDefault = limpiarCelda(document.getElementById('comentarioDefault').value || '');
+
+      cruceResultadoGlobal = cruceRawRows.map(row => {
+        const codigo = normalizarValorCodigo(row[idxCodigo] || '');
+        const encontrado = codigo ? baseMap.get(codigo) : null;
+        return {
+          codigo: codigo || '0',
+          ubicacion: encontrado ? encontrado.ubicaciones : '0',
+          qty: encontrado ? encontrado.cantidades : '0',
+          comentarios: comentarioDefault
+        };
+      });
+
+      cruceResultadoFiltrado = [...cruceResultadoGlobal];
+      renderCruce(cruceResultadoFiltrado);
+      renderSummaryCruce();
+      document.getElementById('searchCruceInput').value = '';
+      document.getElementById('resultCruceCard').classList.remove('hidden');
+      activarTab('panelCruce');
+    }
+
+    function renderSummaryCruce(){
+      const conStock = cruceResultadoGlobal.filter(i => limpiarCelda(i.ubicacion) !== '0').length;
+      const sinStock = cruceResultadoGlobal.filter(i => limpiarCelda(i.ubicacion) === '0').length;
+      document.getElementById('summaryCruce').innerHTML = `
+        <div class="summary-box">Filas a buscar: ${cruceRawRows.length}</div>
+        <div class="summary-box">Resultado visible: ${cruceResultadoFiltrado.length}</div>
+        <div class="summary-box">Con stock: ${conStock}</div>
+        <div class="summary-box">Sin stock: ${sinStock}</div>`;
+    }
+
+    function renderCruce(data){
+      const area = document.getElementById('resultadoCruceArea');
+      if (!data.length){
+        area.innerHTML = `<table><thead><tr><th>Código</th><th>Ubicación</th><th>Qty</th><th>Comentarios</th></tr></thead><tbody><tr><td colspan="4" class="muted">No se encontraron registros.</td></tr></tbody></table>`;
+        return;
+      }
+      let html = `<table id="tablaCruce"><thead><tr><th>Código</th><th>Ubicación</th><th>Qty</th><th>Comentarios</th></tr></thead><tbody>`;
+      data.forEach((item, index) => {
+        const baseIndex = cruceResultadoGlobal.indexOf(item);
+        html += `<tr>
+          <td class="codigo">${escapeHTML(item.codigo)}</td>
+          <td class="${item.ubicacion === '0' ? 'pill-0' : ''}">${escapeHTML(item.ubicacion)}</td>
+          <td class="${item.qty === '0' ? 'pill-0' : ''}">${escapeHTML(item.qty)}</td>
+          <td contenteditable="true" class="comment-cell" oninput="actualizarComentario(${baseIndex}, this.innerText)">${escapeHTML(item.comentarios)}</td>
+        </tr>`;
+      });
+      html += `</tbody></table>`;
+      area.innerHTML = html;
+    }
+
+    function actualizarComentario(index, valor){
+      if (cruceResultadoGlobal[index]) cruceResultadoGlobal[index].comentarios = valor;
+      if (cruceResultadoFiltrado[index]) {}
+    }
+
+    function filtrarCruce(){
+      const texto = document.getElementById('searchCruceInput').value.trim().toLowerCase();
+      cruceResultadoFiltrado = !texto ? [...cruceResultadoGlobal] : cruceResultadoGlobal.filter(item =>
+        item.codigo.toLowerCase().includes(texto) ||
+        item.ubicacion.toLowerCase().includes(texto) ||
+        item.comentarios.toLowerCase().includes(texto)
+      );
+      renderCruce(cruceResultadoFiltrado);
+      renderSummaryCruce();
+    }
+
+    function copiarCruce(){
+      if (!cruceResultadoGlobal.length){ alert('Primero genera el cruce.'); return; }
+      sincronizarComentariosDesdeTabla();
+      const data = cruceResultadoFiltrado.length ? cruceResultadoFiltrado : cruceResultadoGlobal;
+      const texto = ['Código\tUbicación\tQty\tComentarios', ...data.map(i => `${i.codigo}\t${i.ubicacion}\t${i.qty}\t${i.comentarios}`)].join('\n');
+      navigator.clipboard.writeText(texto).then(() => alert('Resultado del cruce copiado.')).catch(() => alert('No se pudo copiar.'));
+    }
+
+    function exportarCruceExcel(){
+      if (!cruceResultadoGlobal.length){ alert('Primero genera el cruce.'); return; }
+      sincronizarComentariosDesdeTabla();
+      const data = cruceResultadoFiltrado.length ? cruceResultadoFiltrado : cruceResultadoGlobal;
+      exportarJSONaExcel(data.map(i => ({ Código:i.codigo, Ubicación:i.ubicacion, Qty:i.qty, Comentarios:i.comentarios })), 'cruce_codigos');
+    }
+
+    function limpiarCruce(){
+      document.getElementById('inputDataCruce').value = '';
+      document.getElementById('colCodigoCruce').innerHTML = '';
+      document.getElementById('comentarioDefault').value = '';
+      document.getElementById('previewCruceArea').innerHTML = '';
+      document.getElementById('resultadoCruceArea').innerHTML = '';
+      document.getElementById('summaryCruce').innerHTML = '';
+      document.getElementById('searchCruceInput').value = '';
+      document.getElementById('configCruceCard').classList.add('hidden');
+      document.getElementById('resultCruceCard').classList.add('hidden');
+      cruceHeaders = []; cruceRawRows = []; cruceResultadoGlobal = []; cruceResultadoFiltrado = [];
+      limpiarOrdenado();
+    }
+
+    function sincronizarComentariosDesdeTabla(){
+      const filas = document.querySelectorAll('#tablaCruce tbody tr');
+      filas.forEach((fila, idx) => {
+        const codigo = limpiarCelda(fila.cells[0]?.innerText || '');
+        const ubicacion = limpiarCelda(fila.cells[1]?.innerText || '');
+        const qty = limpiarCelda(fila.cells[2]?.innerText || '');
+        const comentario = limpiarCelda(fila.cells[3]?.innerText || '');
+        const item = cruceResultadoFiltrado[idx];
+        if (!item) return;
+        item.comentarios = comentario;
+        const globalMatch = cruceResultadoGlobal.find(x => x.codigo === codigo && x.ubicacion === ubicacion && x.qty === qty && x === item || x.codigo === codigo && x.ubicacion === ubicacion && x.qty === qty);
+        if (globalMatch) globalMatch.comentarios = comentario;
+      });
+    }
+
+    function splitPorSlash(valor){
+      const limpio = limpiarCelda(valor);
+      if (!limpio || limpio === '0') return ['0'];
+      return limpio.split('/').map(x => limpiarCelda(x)).filter(x => x !== '');
+    }
+
+    function generarOrdenadoDesdeCruce(){
+      if (!cruceResultadoGlobal.length){
+        alert('Primero genera el resultado del cruce en la pestaña 2.');
+        activarTab('panelCruce');
+        return;
+      }
+      sincronizarComentariosDesdeTabla();
+      const grupos = new Map();
+      let totalLineas = 0;
+
+      cruceResultadoGlobal.forEach(item => {
+        const ubicaciones = splitPorSlash(item.ubicacion);
+        const cantidades = splitPorSlash(item.qty);
+        const longitud = Math.max(ubicaciones.length, cantidades.length);
+
+        for (let i = 0; i < longitud; i++){
+          const ubic = textoVisible(ubicaciones[i] ?? '0', '0');
+          const qty = textoVisible(cantidades[i] ?? '0', '0');
+          const key = ubic || '0';
+          if (!grupos.has(key)) grupos.set(key, []);
+          grupos.get(key).push({
+            codigo: item.codigo,
+            cantidad: qty,
+            comentario: item.comentarios || ''
+          });
+          totalLineas++;
+        }
+      });
+
+      ordenadoGlobal = Array.from(grupos.entries())
+        .sort((a,b) => a[0].localeCompare(b[0], undefined, { numeric:true, sensitivity:'base' }))
+        .map(([ubicacion, items]) => ({ ubicacion, items }));
+
+      renderOrdenado();
+      document.getElementById('summaryOrdenado').innerHTML = `
+        <div class="summary-box">Ubicaciones agrupadas: ${ordenadoGlobal.length}</div>
+        <div class="summary-box">Líneas a recopilar: ${totalLineas}</div>`;
+      activarTab('panelOrdenado');
+    }
+
+    function renderOrdenado(){
+      const area = document.getElementById('resultadoOrdenadoArea');
+      if (!ordenadoGlobal.length){
+        area.innerHTML = `<div class="muted">Aún no hay información ordenada por ubicación.</div>`;
+        return;
+      }
+
+      let html = `<div class="compact-wrap"><table class="compact-table">
+        <thead>
+          <tr>
+            <th style="width:220px;">Ubicación</th>
+            <th style="width:160px;">Código</th>
+            <th style="width:110px;">Cantidad</th>
+            <th>Comentario</th>
+          </tr>
+        </thead>
+        <tbody>`;
+
+      ordenadoGlobal.forEach(grupo => {
+        grupo.items.forEach((item, index) => {
+          html += `<tr>`;
+          if (index === 0){
+            html += `<td class="ubicacion-cell" rowspan="${grupo.items.length}">${escapeHTML(grupo.ubicacion)}</td>`;
+          }
+          html += `<td class="codigo">${escapeHTML(item.codigo)}</td>
+                   <td class="qty-cell">${escapeHTML(item.cantidad)}</td>
+                   <td>${escapeHTML(item.comentario)}</td>
+                 </tr>`;
+        });
+      });
+
+      html += `</tbody></table></div>`;
+      area.innerHTML = html;
+    }
+
+    function limpiarOrdenado(){
+      ordenadoGlobal = [];
+      document.getElementById('resultadoOrdenadoArea').innerHTML = '';
+      document.getElementById('summaryOrdenado').innerHTML = '';
+    }
+
+    function imprimirOrdenado(){
+      if (!ordenadoGlobal.length){ alert('Primero genera el orden por ubicación.'); return; }
+      window.print();
+    }
+
+    function copiarOrdenado(){
+      if (!ordenadoGlobal.length){ alert('Primero genera el orden por ubicación.'); return; }
+      const lineas = ['Ubicación\tCódigo\tCantidad\tComentario'];
+      ordenadoGlobal.forEach(grupo => {
+        grupo.items.forEach(item => {
+          lineas.push(`${grupo.ubicacion}\t${item.codigo}\t${item.cantidad}\t${item.comentario || ''}`);
+        });
+      });
+      const texto = lineas.join('\n');
+      navigator.clipboard.writeText(texto)
+        .then(() => alert('Orden por ubicación copiado.'))
+        .catch(() => alert('No se pudo copiar.'));
+    }
+
+    function exportarOrdenadoExcel(){
+      if (!ordenadoGlobal.length){ alert('Primero genera el orden por ubicación.'); return; }
+      const data = [];
+      ordenadoGlobal.forEach(grupo => {
+        grupo.items.forEach(item => {
+          data.push({
+            Ubicación: grupo.ubicacion,
+            Código: item.codigo,
+            Cantidad: item.cantidad,
+            Comentario: item.comentario || ''
+          });
+        });
+      });
+      exportarJSONaExcel(data, 'orden_por_ubicacion');
+    }
+
+
+    function exportarJSONaExcel(jsonData, baseNombre){
+      if (typeof XLSX === 'undefined'){
+        alert('No se pudo cargar la librería de Excel. Revisa tu conexión y vuelve a intentar.');
+        return;
+      }
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.json_to_sheet(jsonData);
+      const cols = Object.keys(jsonData[0] || {}).map(key => ({ wch: Math.max(key.length + 2, 18) }));
+      ws['!cols'] = cols;
+      XLSX.utils.book_append_sheet(wb, ws, 'Datos');
+      const fecha = new Date();
+      const nombre = `${baseNombre}_${fecha.getFullYear()}-${String(fecha.getMonth()+1).padStart(2,'0')}-${String(fecha.getDate()).padStart(2,'0')}.xlsx`;
+      XLSX.writeFile(wb, nombre);
+    }
+  </script>
+</body>
+</html>
